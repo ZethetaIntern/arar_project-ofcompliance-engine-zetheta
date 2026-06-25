@@ -1,11 +1,11 @@
 import os
 import json
 import logging
+import hashlib
 from datetime import datetime
 from typing import Dict, Any
 from graph_manager import GraphManager
 from compliance_utils import check_watchlist
-import hashlib
 
 # Configuration du rôle (Global pour le test)
 current_user_role = "COMPLIANCE_OFFICER"
@@ -24,15 +24,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ZeThetaEngine")
 
 class ComplianceEngine:
-    """Core engine for multi-jurisdictional compliance analysis."""
-    
-    REGULATORY_FRAMEWORKS = {
-        "UE_AML": {"limit": 10000, "description": "European AML Directive"},
-        "USA_AML": {"limit": 15000, "description": "USA PATRIOT Act"}
-    }
-
     def __init__(self, log_file: str = "audit_log.jsonl"):
         self.log_path = os.path.join(os.path.dirname(__file__), log_file)
+        
+        # 1. Chargement de la configuration dynamique
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        with open(config_path, "r") as f:
+            self.config = json.load(f)
+            
+        # 2. Initialisation de Neo4j
         self.graph = GraphManager(
             "neo4j+s://aff5afc9.databases.neo4j.io", 
             "neo4j", 
@@ -68,8 +68,9 @@ class ComplianceEngine:
         # 1. Vérification des sanctions (Fuzzy Matching)
         is_blacklisted, score = check_watchlist(client_name, sanctions_list)
         
-        # 2. Logique de seuil
-        limit = self.REGULATORY_FRAMEWORKS[framework]["limit"]
+        # 2. Logique de seuil (via config.json)
+        # On utilise .get() pour éviter une erreur si la clé n'existe pas
+        limit = self.config.get("aml_01_threshold", 10000)
         amount = transaction.get("amount", 0)
         
         status = "FLAGGED" if (amount > limit or is_blacklisted) else "PASSED"
@@ -80,7 +81,7 @@ class ComplianceEngine:
             "message": f"Transaction {transaction.get('transaction_id')} {status.lower()} under {framework}."
         }
         
-        # LOGIQUE D'AUDIT ET GRAPH
+        # 3. Enregistrement immuable et Graph
         self._write_to_audit(report)
         self.graph.log_transaction(client_id, transaction.get('transaction_id'), amount, status)
         
