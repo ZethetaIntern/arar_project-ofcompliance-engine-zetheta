@@ -1,17 +1,25 @@
-# Compliance Audit Trail (Confidential)
-audit_log.jsonl
-
-# Configuration files (Sensitive local parameters)
-config.json
-
-# Python temporary files
+# --- Python ---
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Environment files
-.env
-.venv/
+.Python
+env/
 venv/
+.venv/
+pip-log.txt
+
+# --- Environnement et Sécurité ---
+.env
+.flaskenv
 .vscode/
+.idea/
+
+# --- Logs et Données ---
+# On ignore les logs locaux pour éviter de publier des données transactionnelles réelles
+audit_log.jsonl
+*.log
+
+# --- Système ---
+.DS_Store
+Thumbs.db
